@@ -16,6 +16,8 @@ description: "YKFlutterSectionViewModel"
 # a `flutter run` or a `flutter make-host-app-editable`. It has no impact
 # on any other native host app that you embed your Flutter project into.
 version: 0.0.1
+homepage: https://github.com/541278903
+repository: https://github.com/541278903/ykfsectionviewmodel.git
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
