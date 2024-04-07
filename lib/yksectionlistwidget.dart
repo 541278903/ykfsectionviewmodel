@@ -8,11 +8,12 @@ enum YKSectionListHeaderFooterType {
 }
 
 class YKSectionListViewModel {
-  final Function(Function(bool noMoreData) noMoreDataCallBack)? loadCallBack;
 
-  Widget Function(int index)? widgetOfIndexCallBack;
+  final Function(Function(bool noMoreData) noMoreDataCallBack) loadCallBack;
 
-  int Function()? numberOfItemCallBack;
+  final Widget Function(int index) widgetOfIndexCallBack;
+
+  final int Function() numberOfItemCallBack;
 
   Widget Function()? headerCallCallBack;
 
@@ -20,13 +21,7 @@ class YKSectionListViewModel {
 
   bool Function(YKSectionListHeaderFooterType type)? showHeaderFooterWidgetWhenNoDataCallBack;
 
-  YKSectionListViewModel(
-      {required this.loadCallBack,
-      required this.widgetOfIndexCallBack,
-      required this.numberOfItemCallBack,
-      this.headerCallCallBack,
-      this.footerCallCallBack,
-      this.showHeaderFooterWidgetWhenNoDataCallBack});
+  YKSectionListViewModel({required this.loadCallBack, required this.widgetOfIndexCallBack, required this.numberOfItemCallBack,this.headerCallCallBack, this.footerCallCallBack, this.showHeaderFooterWidgetWhenNoDataCallBack});
 }
 
 class YKSectionListWidget extends StatefulWidget {
@@ -96,7 +91,7 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
 
     Widget? footer = null;
     if (viewModel.footerCallCallBack != null) {
-      header = viewModel.footerCallCallBack!();
+      footer = viewModel.footerCallCallBack!();
     }
 
     if (header != null) {
