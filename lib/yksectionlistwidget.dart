@@ -7,21 +7,29 @@ enum YKSectionListHeaderFooterType {
   footer,
 }
 
-class YKSectionListViewModel {
+class YKSectionListViewModelOption {
 
-  final Function(Function(bool noMoreData) noMoreDataCallBack) loadCallBack;
+  Widget? Function()? headerCallBack;
 
-  final Widget Function(int index) widgetOfIndexCallBack;
-
-  final int Function() numberOfItemCallBack;
-
-  Widget Function()? headerCallCallBack;
-
-  Widget Function()? footerCallCallBack;
+  Widget? Function()? footerCallBack;
 
   bool Function(YKSectionListHeaderFooterType type)? showHeaderFooterWidgetWhenNoDataCallBack;
 
-  YKSectionListViewModel({required this.loadCallBack, required this.widgetOfIndexCallBack, required this.numberOfItemCallBack,this.headerCallCallBack, this.footerCallCallBack, this.showHeaderFooterWidgetWhenNoDataCallBack});
+  EdgeInsets Function()? edgeOfSection;
+
+  YKSectionListViewModelOption({this.headerCallBack, this.footerCallBack, this.showHeaderFooterWidgetWhenNoDataCallBack, this.edgeOfSection});
+}
+
+
+abstract class YKSectionListViewModelAbStract {
+
+  void loadData(void Function(bool noMoreData) noMoreDataCallBack);
+
+  Widget widgetForIndex(int index);
+
+  int numberItem();
+
+  YKSectionListViewModelOption? getOption();
 }
 
 class YKSectionListWidget extends StatefulWidget {
@@ -29,7 +37,7 @@ class YKSectionListWidget extends StatefulWidget {
 
   Widget Function(ScrollView scrollView)? setupScrollView;
 
-  List<YKSectionListViewModel> viewModels = [];
+  List<YKSectionListViewModelAbStract> viewModels = [];
 
   YKSectionListWidget({super.key, required this.viewModels, this.setupScrollView});
 
@@ -38,6 +46,9 @@ class YKSectionListWidget extends StatefulWidget {
 }
 
 class _YKSectionListWidgetState extends State<YKSectionListWidget> with AutomaticKeepAliveClientMixin {
+
+  bool _aleardDispose = false;
+
   List<List<Widget>> _list = [];
 
   @override
@@ -50,6 +61,12 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
     super.initState();
     _refresh();
     _loadAllData();
+  }
+
+  @override
+  void dispose() {
+    _aleardDispose = true;
+    super.dispose();
   }
 
   Widget _main() {
@@ -72,32 +89,31 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
     }
   }
 
-  List<Widget> _setup(YKSectionListViewModel viewModel) {
+  List<Widget> _setup(YKSectionListViewModelAbStract viewModel) {
     List<Widget> widgets = [];
 
     Widget? header = null;
-    if (viewModel.headerCallCallBack != null) {
-      header = viewModel.headerCallCallBack!();
-    }
-
-    var widget = ListView.builder(
-        shrinkWrap: true,
-        scrollDirection: Axis.vertical,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: viewModel.numberOfItemCallBack!(),
-        itemBuilder: (context, i) {
-          return viewModel.widgetOfIndexCallBack!(i);
-        });
-
     Widget? footer = null;
-    if (viewModel.footerCallCallBack != null) {
-      footer = viewModel.footerCallCallBack!();
-    }
+    YKSectionListViewModelOption? option = viewModel.getOption();
+
+    EdgeInsets edge = EdgeInsets.all(0);
+
+    if (option != null) {
+      if (option!.edgeOfSection != null) {
+        edge = option!.edgeOfSection!();
+      }
+      if (option!.headerCallBack != null) {
+        header = option!.headerCallBack!();
+      }
+      if (option!.footerCallBack != null) {
+        footer = option!.footerCallBack!();
+      }
+    };
 
     if (header != null) {
-      if (viewModel.numberOfItemCallBack!() <= 0) {
-        if (viewModel.showHeaderFooterWidgetWhenNoDataCallBack != null) {
-          if (viewModel.showHeaderFooterWidgetWhenNoDataCallBack!(YKSectionListHeaderFooterType.header)) {
+      if (viewModel.numberItem() <= 0) {
+        if (option != null && option!.showHeaderFooterWidgetWhenNoDataCallBack != null) {
+          if (option!.showHeaderFooterWidgetWhenNoDataCallBack!(YKSectionListHeaderFooterType.header)) {
             widgets.add(header);
           }
         }
@@ -105,11 +121,23 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
         widgets.add(header);
       }
     }
-    widgets.add(widget);
+
+
+    widgets.add(Padding(
+        padding: edge,
+        child: ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: viewModel.numberItem(),
+          itemBuilder: (context, index) {
+            return viewModel.widgetForIndex(index);
+          })
+    ));
+
     if (footer != null) {
-      if (viewModel.numberOfItemCallBack!() <= 0) {
-        if (viewModel.showHeaderFooterWidgetWhenNoDataCallBack != null) {
-          if (viewModel.showHeaderFooterWidgetWhenNoDataCallBack!(YKSectionListHeaderFooterType.footer)) {
+      if (viewModel.numberItem() <= 0) {
+        if (option != null && option!.showHeaderFooterWidgetWhenNoDataCallBack != null) {
+          if (option!.showHeaderFooterWidgetWhenNoDataCallBack!(YKSectionListHeaderFooterType.footer)) {
             widgets.add(footer);
           }
         }
@@ -131,13 +159,14 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
 
     _list = newList;
 
-    setState(() {});
+    if (!_aleardDispose) {
+      setState(() {});
+    }
   }
 
   void _loadAllData() {
     for (var vm in widget.viewModels) {
-
-      vm.loadCallBack!((noMoreData) {
+      vm.loadData((noMoreData) {
         _refresh();
       });
     }
