@@ -32,14 +32,25 @@ abstract class YKSectionListViewModelAbStract {
   YKSectionListViewModelOption? getOption();
 }
 
+class YKSectionListWidgetController {
+
+  void Function()? _refresh;
+
+  Function? get refresh => _refresh;
+
+  final void Function(bool noMoreData) nomoreDataCallBack;
+
+  YKSectionListWidgetController(this.nomoreDataCallBack);
+}
+
 class YKSectionListWidget extends StatefulWidget {
   final bool _keepAlive = true;
 
-  Widget Function(ScrollView scrollView)? setupScrollView;
+  YKSectionListWidgetController? controller;
 
   List<YKSectionListViewModelAbStract> viewModels = [];
 
-  YKSectionListWidget({super.key, required this.viewModels, this.setupScrollView});
+  YKSectionListWidget({super.key, required this.viewModels, this.controller});
 
   @override
   State<YKSectionListWidget> createState() => _YKSectionListWidgetState();
@@ -48,6 +59,8 @@ class YKSectionListWidget extends StatefulWidget {
 class _YKSectionListWidgetState extends State<YKSectionListWidget> with AutomaticKeepAliveClientMixin {
 
   bool _aleardDispose = false;
+
+  bool _nomoreData = false;
 
   List<List<Widget>> _list = [];
 
@@ -59,7 +72,12 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
   @override
   void initState() {
     super.initState();
-    _refresh();
+
+    widget.controller?._refresh = () {
+      if (!_aleardDispose) {
+        _loadAllData();
+      }
+    };
     _loadAllData();
   }
 
@@ -82,11 +100,7 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
       slivers: [SliverList(delegate: SliverChildListDelegate(alllist))],
     );
 
-    if (widget.setupScrollView != null) {
-      return widget.setupScrollView!(mainWidget);
-    } else {
-      return mainWidget;
-    }
+    return mainWidget;
   }
 
   List<Widget> _setup(YKSectionListViewModelAbStract viewModel) {
@@ -126,12 +140,12 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
     widgets.add(Padding(
         padding: edge,
         child: ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: viewModel.numberItem(),
-          itemBuilder: (context, index) {
-            return viewModel.widgetForIndex(index);
-          })
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: viewModel.numberItem(),
+            itemBuilder: (context, index) {
+              return viewModel.widgetForIndex(index);
+            })
     ));
 
     if (footer != null) {
@@ -160,6 +174,7 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
     _list = newList;
 
     if (!_aleardDispose) {
+      widget.controller?.nomoreDataCallBack?.call(_nomoreData);
       setState(() {});
     }
   }
@@ -167,6 +182,7 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
   void _loadAllData() {
     for (var vm in widget.viewModels) {
       vm.loadData((noMoreData) {
+        _nomoreData = _nomoreData || noMoreData;
         _refresh();
       });
     }
