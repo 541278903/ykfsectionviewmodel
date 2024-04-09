@@ -7,6 +7,11 @@ enum YKSectionListHeaderFooterType {
   footer,
 }
 
+enum YKSectionListRefreshType {
+  header,
+  footer
+}
+
 class YKSectionListViewModelOption {
 
   Widget? Function()? headerCallBack;
@@ -17,13 +22,15 @@ class YKSectionListViewModelOption {
 
   EdgeInsets Function()? edgeOfSection;
 
-  YKSectionListViewModelOption({this.headerCallBack, this.footerCallBack, this.showHeaderFooterWidgetWhenNoDataCallBack, this.edgeOfSection});
+  bool Function()? needRefreshInFooterMode;
+
+  YKSectionListViewModelOption({this.headerCallBack, this.footerCallBack, this.showHeaderFooterWidgetWhenNoDataCallBack, this.edgeOfSection, this.needRefreshInFooterMode});
 }
 
 
 abstract class YKSectionListViewModelAbStract {
 
-  void loadData(void Function(bool noMoreData) noMoreDataCallBack);
+  void loadData(YKSectionListRefreshType type, void Function(bool noMoreData) noMoreDataCallBack);
 
   Widget widgetForIndex(int index);
 
@@ -32,15 +39,13 @@ abstract class YKSectionListViewModelAbStract {
   YKSectionListViewModelOption? getOption();
 }
 
+
 class YKSectionListWidgetController {
 
-  void Function()? _refresh;
+  void Function(YKSectionListRefreshType type, void Function(bool nomoreData) endRefresh)? _refresh;
 
-  Function? get refresh => _refresh;
+  Function(YKSectionListRefreshType type, void Function(bool nomoreData) endRefresh)? get refresh => _refresh;
 
-  final void Function(bool noMoreData) nomoreDataCallBack;
-
-  YKSectionListWidgetController(this.nomoreDataCallBack);
 }
 
 class YKSectionListWidget extends StatefulWidget {
@@ -64,6 +69,8 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
 
   List<List<Widget>> _list = [];
 
+  void Function(bool nomoreData)? _endRefreshCallBack;
+
   @override
   Widget build(BuildContext context) {
     return _main();
@@ -73,12 +80,13 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
   void initState() {
     super.initState();
 
-    widget.controller?._refresh = () {
+    widget.controller?._refresh = (type, endRefresh) {
       if (!_aleardDispose) {
-        _loadAllData();
+        _loadAllData(type);
       }
+      _endRefreshCallBack = endRefresh;
     };
-    _loadAllData();
+    _loadAllData(YKSectionListRefreshType.header);
   }
 
   @override
@@ -174,17 +182,40 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
     _list = newList;
 
     if (!_aleardDispose) {
-      widget.controller?.nomoreDataCallBack?.call(_nomoreData);
+      _endRefreshCallBack?.call(_nomoreData);
       setState(() {});
     }
   }
 
-  void _loadAllData() {
+  void _loadAllData(YKSectionListRefreshType type) {
+
+    _nomoreData = false;
+    List<YKSectionListViewModelAbStract> reloadVms = [];
+
     for (var vm in widget.viewModels) {
-      vm.loadData((noMoreData) {
-        _nomoreData = _nomoreData || noMoreData;
-        _refresh();
-      });
+
+      if (type == YKSectionListRefreshType.footer) {
+        final inFooter = vm.getOption()?.needRefreshInFooterMode?.call() ?? false;
+        if (inFooter) {
+          reloadVms.add(vm);
+        }
+      } else {
+        reloadVms.add(vm);
+      }
+    }
+
+    if (reloadVms.isNotEmpty) {
+
+      for (var vm in reloadVms) {
+        vm.loadData(type, (noMoreData) {
+          if (type == YKSectionListRefreshType.footer) {
+            _nomoreData = _nomoreData || noMoreData;
+          }
+          _refresh();
+        });
+      }
+    } else {
+      _refresh();
     }
   }
 
