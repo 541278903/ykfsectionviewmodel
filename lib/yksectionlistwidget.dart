@@ -170,7 +170,7 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
     return widgets;
   }
 
-  _refresh() {
+  _refresh(bool refreshCallBack) {
     var vms = widget.viewModels;
 
     List<List<Widget>> newList = [];
@@ -182,7 +182,9 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
     _list = newList;
 
     if (!_aleardDispose) {
-      _endRefreshCallBack?.call(_nomoreData);
+      if (refreshCallBack) {
+        _endRefreshCallBack?.call(_nomoreData);
+      }
       setState(() {});
     }
   }
@@ -191,15 +193,17 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
 
     _nomoreData = false;
     List<YKSectionListViewModelAbStract> reloadVms = [];
-
+    List<String> vmhaslist = [];
     for (var vm in widget.viewModels) {
 
       if (type == YKSectionListRefreshType.footer) {
         final inFooter = vm.getOption()?.needRefreshInFooterMode?.call() ?? false;
         if (inFooter) {
+          vmhaslist.add(vm.hashCode.toString());
           reloadVms.add(vm);
         }
       } else {
+        vmhaslist.add(vm.hashCode.toString());
         reloadVms.add(vm);
       }
     }
@@ -211,11 +215,12 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
           if (type == YKSectionListRefreshType.footer) {
             _nomoreData = _nomoreData || noMoreData;
           }
-          _refresh();
+          vmhaslist.removeWhere((element) => element == vm.hashCode.toString());
+          _refresh(vmhaslist.isEmpty);
         });
       }
     } else {
-      _refresh();
+      _refresh(vmhaslist.isEmpty);
     }
   }
 
