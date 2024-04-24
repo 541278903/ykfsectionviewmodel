@@ -28,7 +28,7 @@ class YKSectionListViewModelOption {
 }
 
 
-abstract class YKSectionListViewModelAbStract {
+mixin YKSectionListViewModelAbStract {
 
   void loadData(YKSectionListRefreshType type, void Function(bool noMoreData) noMoreDataCallBack);
 
