@@ -42,23 +42,43 @@ mixin YKSectionListViewModelAbStract {
 
 class YKSectionListWidgetController {
 
+  YKSectionListWidget? _widget;
+
   void Function(YKSectionListRefreshType type, void Function(bool nomoreData) endRefresh)? _refresh;
 
-  Function(YKSectionListRefreshType type, void Function(bool nomoreData) endRefresh)? get refresh => _refresh;
+  void refresh(void Function(bool nomoreData) endRefresh) {
+    _refresh?.call(YKSectionListRefreshType.header, endRefresh);
+  }
 
+  void loadMore(void Function(bool nomoreData) endRefresh) {
+    _refresh?.call(YKSectionListRefreshType.footer, endRefresh);
+  }
+
+  void resetViewModels(List<YKSectionListViewModelAbStract> viewModels, void Function(bool nomoreData)? endRefresh) {
+    _widget?.viewModels = viewModels;
+    refresh((nomoreData) {
+      endRefresh?.call(nomoreData);
+    });
+  }
 }
 
 class YKSectionListWidget extends StatefulWidget {
+
   final bool _keepAlive = true;
 
-  YKSectionListWidgetController? controller;
+  YKSectionListWidgetController? _controller;
 
   List<YKSectionListViewModelAbStract> viewModels = [];
 
-  YKSectionListWidget({super.key, required this.viewModels, this.controller});
+  YKSectionListWidget({super.key, required this.viewModels, YKSectionListWidgetController? controller}) {
+    _controller = controller;
+    _controller?._widget = this;
+  }
+
+  final _YKSectionListWidgetState _state = _YKSectionListWidgetState();
 
   @override
-  State<YKSectionListWidget> createState() => _YKSectionListWidgetState();
+  State<YKSectionListWidget> createState() => _state;
 }
 
 class _YKSectionListWidgetState extends State<YKSectionListWidget> with AutomaticKeepAliveClientMixin {
@@ -80,7 +100,7 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
   void initState() {
     super.initState();
 
-    widget.controller?._refresh = (type, endRefresh) {
+    widget._controller?._refresh = (type, endRefresh) {
       if (!_aleardDispose) {
         _loadAllData(type);
       }
