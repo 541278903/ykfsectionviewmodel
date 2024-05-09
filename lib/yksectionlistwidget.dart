@@ -44,20 +44,22 @@ class YKSectionListWidgetController {
 
   YKSectionListWidget? _widget;
 
-  void Function(YKSectionListRefreshType type, void Function(bool nomoreData) endRefresh)? _refresh;
-
-  void refresh(void Function(bool nomoreData) endRefresh) {
-    _refresh?.call(YKSectionListRefreshType.header, endRefresh);
+  void refresh(void Function() endRefresh) {
+    _widget?._state._load(YKSectionListRefreshType.header, (nomoreData) {
+      endRefresh.call();
+    });
   }
 
   void loadMore(void Function(bool nomoreData) endRefresh) {
-    _refresh?.call(YKSectionListRefreshType.footer, endRefresh);
+    _widget?._state._load(YKSectionListRefreshType.footer, (nomoreData) {
+      endRefresh.call(nomoreData);
+    });
   }
 
-  void resetViewModels(List<YKSectionListViewModelAbStract> viewModels, void Function(bool nomoreData)? endRefresh) {
+  void resetViewModels(List<YKSectionListViewModelAbStract> viewModels, void Function()? endRefresh) {
     _widget?.viewModels = viewModels;
-    refresh((nomoreData) {
-      endRefresh?.call(nomoreData);
+    refresh(() {
+      endRefresh?.call();
     });
   }
 }
@@ -91,6 +93,8 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
 
   void Function(bool nomoreData)? _endRefreshCallBack;
 
+  bool _loading = false;
+
   @override
   Widget build(BuildContext context) {
     return _main();
@@ -100,13 +104,7 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
   void initState() {
     super.initState();
 
-    widget._controller?._refresh = (type, endRefresh) {
-      if (!_aleardDispose) {
-        _loadAllData(type);
-      }
-      _endRefreshCallBack = endRefresh;
-    };
-    _loadAllData(YKSectionListRefreshType.header);
+    _loadAllData(YKSectionListRefreshType.header, null);
   }
 
   @override
@@ -205,11 +203,17 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
       if (refreshCallBack) {
         _endRefreshCallBack?.call(_nomoreData);
       }
+      _loading = false;
       setState(() {});
     }
   }
 
-  void _loadAllData(YKSectionListRefreshType type) {
+  void _loadAllData(YKSectionListRefreshType type, void Function(bool nomoreData)? endRefresh) {
+    if (_loading) {
+      return;
+    }
+    _endRefreshCallBack = endRefresh;
+    _loading = true;
 
     _nomoreData = false;
     List<YKSectionListViewModelAbStract> reloadVms = [];
@@ -241,6 +245,12 @@ class _YKSectionListWidgetState extends State<YKSectionListWidget> with Automati
       }
     } else {
       _refresh(vmhaslist.isEmpty);
+    }
+  }
+
+  void _load(YKSectionListRefreshType type, void Function(bool nomoreData) endRefresh) {
+    if (!_aleardDispose) {
+      _loadAllData(type, endRefresh);
     }
   }
 
